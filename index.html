@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تست نوبیتکس</title>
+<style>
+  body { font-family: Tahoma, sans-serif; background: #0f172a; color: #e2e8f0; padding: 16px; direction: rtl; }
+  .container { max-width: 600px; margin: auto; }
+  h1 { font-size: 18px; text-align: center; }
+  .card { background: #1e293b; border-radius: 12px; padding: 14px; margin-bottom: 12px; border: 1px solid #334155; }
+  label { display: block; font-size: 12.5px; color: #94a3b8; margin: 8px 0 4px; }
+  input { width: 100%; padding: 10px; background: #273449; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-size: 14px; box-sizing: border-box; }
+  button { width: 100%; padding: 14px; background: #22c55e; color: #06210f; font-weight: bold; font-size: 16px; border: none; border-radius: 10px; cursor: pointer; font-family: inherit; margin-top: 10px; }
+  .result { background: #273449; border-radius: 10px; padding: 12px; margin-top: 12px; font-size: 14px; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed rgba(148,163,184,0.2); }
+  .row:last-child { border-bottom: none; }
+  .row span:first-child { color: #94a3b8; }
+  .row span:last-child { font-weight: bold; }
+  .ok { color: #22c55e; }
+  .err { color: #ef4444; }
+  .status { text-align: center; padding: 10px; border-radius: 8px; background: #273449; margin-bottom: 10px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🧪 تست اتصال به نوبیتکس</h1>
+  <div class="status" id="status">در حال آماده‌سازی...</div>
+
+  <div class="card">
+    <label>نماد ارز (مثلاً BTC، ETH، DOGE)</label>
+    <input type="text" id="symbol" value="BTC">
+    <button onclick="testFetch()">🔍 دریافت قیمت</button>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+function setStatus(msg, cls) {
+  var s = document.getElementById('status');
+  s.textContent = msg;
+  s.className = 'status ' + (cls || '');
+}
+
+async function testFetch() {
+  var symbol = document.getElementById('symbol').value.trim().toLowerCase();
+  if (!symbol) { setStatus('نماد را وارد کن', 'err'); return; }
+
+  setStatus('⏳ در حال دریافت از نوبیتکس...', '');
+  document.getElementById('result').innerHTML = '';
+
+  try {
+    // قیمت تتر به ریال
+    var url1 = 'https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls';
+    var r1 = await fetch(url1);
+    var j1 = await r1.json();
+
+    // قیمت ارز مورد نظر به ریال
+    var url2 = 'https://apiv2.nobitex.ir/market/stats?srcCurrency=' + symbol + '&dstCurrency=rls';
+    var r2 = await fetch(url2);
+    var j2 = await r2.json();
+
+    // قیمت ارز مورد نظر به تتر
+    var url3 = 'https://apiv2.nobitex.ir/market/stats?srcCurrency=' + symbol + '&dstCurrency=usdt';
+    var r3 = await fetch(url3);
+    var j3 = await r3.json();
+
+    var usdtRls = j1.stats && j1.stats['usdt-rls'] ? parseFloat(j1.stats['usdt-rls'].latest) : null;
+    var coinRls = j2.stats && j2.stats[symbol + '-rls'] ? parseFloat(j2.stats[symbol + '-rls'].latest) : null;
+    var coinUsdt = j3.stats && j3.stats[symbol + '-usdt'] ? parseFloat(j3.stats[symbol + '-usdt'].latest) : null;
+
+    // تبدیل ریال به تومان (تقسیم بر ۱۰)
+    var usdtToman = usdtRls ? usdtRls / 10 : null;
+    var coinToman = coinRls ? coinRls / 10 : null;
+
+    var html = '<div class="result">';
+    html += '<div class="row"><span>نماد</span><span>' + symbol.toUpperCase() + '</span></div>';
+    html += '<div class="row"><span>تتر (تومان)</span><span class="' + (usdtToman ? 'ok' : 'err') + '">' + (usdtToman ? usdtToman.toLocaleString('en-US') : 'دریافت نشد') + '</span></div>';
+    html += '<div class="row"><span>' + symbol.toUpperCase() + ' (تومان)</span><span class="' + (coinToman ? 'ok' : 'err') + '">' + (coinToman ? coinToman.toLocaleString('en-US') : 'دریافت نشد') + '</span></div>';
+    html += '<div class="row"><span>' + symbol.toUpperCase() + ' (تتر)</span><span class="' + (coinUsdt ? 'ok' : 'err') + '">' + (coinUsdt ? coinUsdt.toFixed(8) : 'دریافت نشد') + '</span></div>';
+    html += '</div>';
+
+    document.getElementById('result').innerHTML = html;
+    setStatus('✅ اتصال موفق بود!', 'ok');
+
+  } catch (err) {
+    setStatus('❌ خطا: ' + err.message, 'err');
+  }
+}
+
+window.onload = function () {
+  setStatus('✅ صفحه لود شد — دکمه را بزن', 'ok');
+};
+</script>
+</body>
+</html>
